@@ -1,7 +1,7 @@
 function Invoke-ChatGptAPI {
   param (
     [string] $model,
-    [string[]] $messages,
+    [PSCustomObject[]] $messages,
     [string] $apiKey
   )
 
@@ -18,9 +18,9 @@ function Invoke-ChatGptAPI {
   $body = @{
     "model"    = $model
     "messages" = $messages | ForEach-Object {
-      @{
-        role    = if( Get-Member -InputObject $ -Name "role") { $.role}  else { "user" }
-        content = if( Get-Member -InputObject $ -Name "content") { $.content}  else { "hello" }
+      [PSCustomObject]@{
+        role    = if ( Get-Member -InputObject $_ -Name "role") { $_.role }  else { "user" }
+        content = if ( Get-Member -InputObject $_ -Name "content") { $_.content }  else { "hello" }
       }
     }
   }
@@ -105,10 +105,14 @@ while ($true) {
   
     # Call the ChatGPT API
     $assistantResponse = Invoke-ChatGptAPI -model "gpt-3.5-turbo" -messages $conversation.messages -apiKey $apiKey
+    # Parse the assistant response and trim the message
+    $assistantMessage = ($assistantResponse.choices | Select-Object -First 1).message
+    $assistantMessage.content = $assistantMessage.content.Trim()
+
+    # Print the message
+    Write-Host $assistantMessage.content
+
     # Add the assistant response to the conversation
-    $conversation.messages += [PSCustomObject]@{
-      role    = "assistant"
-      content = $assistantResponse
-    }
+    $conversation.messages += $assistantMessage
   }
 }

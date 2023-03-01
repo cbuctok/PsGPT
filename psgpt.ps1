@@ -29,7 +29,7 @@ function Invoke-ChatGptAPI {
   $body.messages = @($body.messages)
 
   $json = $body | ConvertTo-Json
-  
+
   $response = Invoke-RestMethod -Uri "https://api.openai.com/v1/chat/completions" -Method POST -Headers $header -Body $json
 
   return $response
@@ -56,7 +56,7 @@ function Save-Conversation {
   )
 
   $conversation | ConvertTo-Json | Set-Content $filePath
-  Write-Host "Conversation saved to $filePath."
+  Write-Output "Conversation saved to $filePath."
 }
 
 function Get-UserInput {
@@ -79,7 +79,7 @@ if (!$conversation) {
 
 # Print the conversation
 $conversation.messages | ForEach-Object {
-  Write-Host "$($_.role): $($_.content)" 
+  Write-Output "$($_.role): $($_.content)"
 }
 
 # Main loop to wait for user input
@@ -107,7 +107,7 @@ while ($true) {
       role    = "user"
       content = $userInput
     }
-  
+
     # Call the ChatGPT API
     $assistantResponse = Invoke-ChatGptAPI -model "gpt-3.5-turbo" -messages $conversation.messages -apiKey $apiKey
     # Parse the assistant response and trim the message
@@ -115,7 +115,7 @@ while ($true) {
     $assistantMessage.content = $assistantMessage.content.Trim()
 
     # Print the message
-    Write-Host "$($assistantMessage.role): $($assistantMessage.content)"
+    Write-Output "$($assistantMessage.role): $($assistantMessage.content)"
 
     # Add the assistant response to the conversation
     $conversation.messages += $assistantMessage

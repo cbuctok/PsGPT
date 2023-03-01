@@ -60,7 +60,7 @@ function Save-Conversation {
 }
 
 function Get-UserInput {
-  return Read-Host "Enter a message (or a command):"
+  return Read-Host "user"
 }
 
 # Load the ChatGPT API key from an environment variable
@@ -75,6 +75,11 @@ if (!$conversation) {
   $conversation = [PSCustomObject]@{
     messages = @()
   }
+}
+
+# Print the conversation
+$conversation.messages | ForEach-Object {
+  Write-Host "$($_.role): $($_.content)" 
 }
 
 # Main loop to wait for user input
@@ -110,7 +115,7 @@ while ($true) {
     $assistantMessage.content = $assistantMessage.content.Trim()
 
     # Print the message
-    Write-Host $assistantMessage.content
+    Write-Host "$($assistantMessage.role): $($assistantMessage.content)"
 
     # Add the assistant response to the conversation
     $conversation.messages += $assistantMessage

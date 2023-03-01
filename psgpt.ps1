@@ -23,7 +23,10 @@ function Invoke-ChatGptAPI {
         content = if( Get-Member -InputObject $ -Name "content") { $.content}  else { "hello" }
       }
     }
-  } 
+  }
+
+  # convert messages into array
+  $body.messages = @($body.messages)
 
   $json = $body | ConvertTo-Json
   

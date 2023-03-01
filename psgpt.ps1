@@ -6,7 +6,7 @@ function Invoke-ChatGptAPI {
   )
 
   if (!$apiKey) {
-    Write-Output "Error: OpenAI API Key not found in environment variables. Set the OPENAI_API_KEY environment variable with your API key."
+    Write-Output "Error: OpenAI API Key not found in environment variables. Set the CHATGPT_API_KEY environment variable with your API key."
     return
   }
 
@@ -19,12 +19,40 @@ function Invoke-ChatGptAPI {
     "model"    = $model
     "messages" = $messages
   }
-
-  $response = Invoke-RestMethod -Uri "https://api.openai.com/v1/chat/completions" -Method POST -Headers $header -Body (ConvertTo-Json $body)
+  $json = $body | ConvertTo-Json
+  
+  $response = Invoke-RestMethod -Uri "https://api.openai.com/v1/chat/completions" -Method POST -Headers $header -Body ($json)
 
   return $response
 }
 
+function Get-Conversation {
+  param (
+    [string] $filePath
+  )
+
+  if (-not (Test-Path $filePath)) {
+    New-Item -Path $filePath -ItemType File -Force
+  }
+
+  $conversation = Get-Content $filePath | ConvertFrom-Json
+
+  return $conversation
+}
+
+function Save-Conversation {
+  param (
+    [string] $filePath,
+    [object] $conversation
+  )
+
+  $conversation | ConvertTo-Json | Set-Content $filePath
+  Write-Host "Conversation saved to $filePath."
+}
+
+function Get-UserInput {
+  return Read-Host "Enter a message (or a command):"
+}
 
 # Load the ChatGPT API key from an environment variable
 $apiKey = [System.Environment]::GetEnvironmentVariable("CHATGPT_API_KEY", "User")
@@ -32,24 +60,23 @@ $apiKey = [System.Environment]::GetEnvironmentVariable("CHATGPT_API_KEY", "User"
 # Get the file path for the conversation file
 $filePath = $args[0]
 
-# If the file does not exist, create an empty conversation file
-if (-not (Test-Path $filePath)) {
-  New-Item -Path $filePath -ItemType File -Force
-}
-
 # Load the conversation from the file
-$conversation = Get-Content $filePath | ConvertFrom-Json
+$conversation = Get-Conversation -filePath $filePath
+if (!$conversation) {
+  $conversation = [PSCustomObject]@{
+    messages = @()
+  }
+}
 
 # Main loop to wait for user input
 while ($true) {
   # Get user input
-  $userInput = Read-Host "Enter a message (or a command):"
-  
+  $userInput = Get-UserInput
+
   # Check if the input is a command
   if ($userInput -eq "/save") {
     # Save the conversation to the file
-    $conversation | ConvertTo-Json | Set-Content $filePath
-    Write-Host "Conversation saved to $filePath."
+    Save-Conversation -filePath $filePath -conversation $conversation
   }
   elseif ($userInput -eq "/exit") {
     # Exit the script
@@ -57,8 +84,7 @@ while ($true) {
   }
   elseif ($userInput -eq "/wq") {
     # Save the conversation and exit the script
-    $conversation | ConvertTo-Json | Set-Content $filePath
-    Write-Host "Conversation saved to $filePath."
+    Save-Conversation -filePath $filePath -conversation $conversation
     break
   }
   else {
@@ -69,15 +95,11 @@ while ($true) {
     }
   
     # Call the ChatGPT API
-    Invoke-ChatGptAPI -model "gpt-3.5-turbo" -messages $conversation.messages.content -apiKey $apiKey | ForEach-Object {
-      # Add the assistant response to the conversation
-      $conversation.messages += [PSCustomObject]@{
-        role    = "assistant"
-        content = $_.choices[0].text
-      }
+    $assistantResponse = Invoke-ChatGptAPI -model "gpt-3.5-turbo" -messages $conversation.messages -apiKey $apiKey
+    # Add the assistant response to the conversation
+    $conversation.messages += [PSCustomObject]@{
+      role    = "assistant"
+      content = $assistantResponse
     }
   }
 }
-
-
-  

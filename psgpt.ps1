@@ -17,11 +17,17 @@ function Invoke-ChatGptAPI {
 
   $body = @{
     "model"    = $model
-    "messages" = $messages
-  }
+    "messages" = $messages | ForEach-Object {
+      @{
+        role    = if( Get-Member -InputObject $ -Name "role") { $.role}  else { "user" }
+        content = if( Get-Member -InputObject $ -Name "content") { $.content}  else { "hello" }
+      }
+    }
+  } 
+
   $json = $body | ConvertTo-Json
   
-  $response = Invoke-RestMethod -Uri "https://api.openai.com/v1/chat/completions" -Method POST -Headers $header -Body ($json)
+  $response = Invoke-RestMethod -Uri "https://api.openai.com/v1/chat/completions" -Method POST -Headers $header -Body $json
 
   return $response
 }
